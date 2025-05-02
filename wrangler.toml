@@ -2,6 +2,6 @@ name = "conf-room"
 compatibility_date = "2024-01-01"
 
 [[d1_databases]]
-binding = "DB"
+binding = "db"
 database_name = "conf-room-db"
 database_id = "883f59e3-1350-4983-90e0-42335ca42eaf"  # Add your actual D1 database ID here 
