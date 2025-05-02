@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conference Room Booking</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f6f8fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            padding: 32px 28px 28px 28px;
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 0.5em;
+        }
+        .room-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 2em;
+        }
+        .room {
+            background: #f0f4f8;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            padding: 18px 22px;
+            min-width: 180px;
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .room strong {
+            font-size: 1.1em;
+            color: #1a202c;
+        }
+        .room small {
+            color: #718096;
+        }
+        .booking-form {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 22px 18px 18px 18px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+            margin-bottom: 2em;
+        }
+        .booking-form h2 {
+            margin-top: 0;
+            color: #2b6cb0;
+        }
+        label {
+            font-weight: 500;
+            color: #2d3748;
+        }
+        input, select {
+            padding: 7px 10px;
+            margin-top: 4px;
+            margin-bottom: 14px;
+            border: 1px solid #cbd5e0;
+            border-radius: 5px;
+            width: 100%;
+            font-size: 1em;
+            background: #fff;
+            box-sizing: border-box;
+            display: block;
+        }
+        button {
+            background: #3182ce;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 22px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        #bookingResult {
+            margin-top: 10px;
+            font-weight: 500;
+            color: #e53e3e;
+        }
+        #bookingResult:empty {
+            display: none;
+        }
+        #currentBookings {
+            margin-top: 18px;
+            background: #edf2f7;
+            border-radius: 6px;
+            padding: 12px 14px;
+        }
+        #currentBookings h3 {
+            margin-top: 0;
+            color: #2b6cb0;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 8px 2px;
+                max-width: 98vw;
+            }
+            .room-list {
+                flex-direction: column;
+            }
+            .booking-form {
+                padding: 12px 4px 10px 4px;
+            }
+            input, select, button {
+                font-size: 0.98em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Conference Room Booking</h1>
+        <div class="room-list" id="room-list">
+            <!-- Rooms will be loaded here -->
+        </div>
+        <div class="booking-form">
+            <h2>Book a Room</h2>
+            <form id="bookingForm">
+                <label for="room">Room:</label>
+                <select id="room" name="room"></select><br>
+                <label for="user">Your Name:</label>
+                <input type="text" id="user" name="user" required><br>
+                <label for="start">Start Time:</label>
+                <input type="datetime-local" id="start" name="start" required><br>
+                <label for="end">End Time:</label>
+                <input type="datetime-local" id="end" name="end" required><br>
+                <button type="submit">Book</button>
+            </form>
+            <div id="bookingResult"></div>
+            <div id="currentBookings"></div>
+        </div>
+    </div>
+    <script>
+        async function loadRooms() {
+            const res = await fetch('/api/rooms');
+            const rooms = await res.json();
+            const roomList = document.getElementById('room-list');
+            const roomSelect = document.getElementById('room');
+            roomList.innerHTML = '';
+            roomSelect.innerHTML = '';
+            rooms.forEach(room => {
+                const div = document.createElement('div');
+                div.className = 'room';
+                div.innerHTML = `<strong>${room.name}</strong> (${room.location || 'No location'})`;
+                roomList.appendChild(div);
+                const option = document.createElement('option');
+                option.value = room.id;
+                option.textContent = room.name;
+                roomSelect.appendChild(option);
+            });
+            if (rooms.length > 0) {
+                loadBookings(rooms[0].id);
+            }
+        }
+        async function loadBookings(roomId) {
+            const res = await fetch(`/api/bookings?room_id=${roomId}`);
+            const bookings = await res.json();
+            const bookingsDiv = document.getElementById('currentBookings');
+            if (bookings.length === 0) {
+                bookingsDiv.innerHTML = '<em>No bookings for this room.</em>';
+            } else {
+                bookingsDiv.innerHTML = '<h3>Current Bookings</h3>' + bookings.map(b => `<div>${b.user_name}: ${b.start_time} to ${b.end_time}</div>`).join('');
+            }
+        }
+        document.getElementById('room').addEventListener('change', function() {
+            loadBookings(this.value);
+        });
+        document.getElementById('bookingForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                room_id: document.getElementById('room').value,
+                user_name: document.getElementById('user').value,
+                start_time: document.getElementById('start').value,
+                end_time: document.getElementById('end').value
+            };
+            const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.status === 409) {
+                document.getElementById('bookingResult').textContent = result.error;
+            } else if (res.status !== 200) {
+                document.getElementById('bookingResult').textContent = result.error || 'Error booking room.';
+            } else {
+                document.getElementById('bookingResult').textContent = result.message || 'Booking submitted!';
+                loadBookings(data.room_id);
+            }
+        };
+        loadRooms();
+    </script>
+</body>
+</html> 
