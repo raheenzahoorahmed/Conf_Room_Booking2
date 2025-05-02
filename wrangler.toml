@@ -1,0 +1,8 @@
+name = "conf-room-booking"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "conf_room_booking"
+database_id = "your-database-id"  # Replace with your actual D1 database ID 
