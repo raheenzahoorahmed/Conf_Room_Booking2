@@ -149,7 +149,7 @@
     <script>
         async function loadRooms() {
             try {
-                const res = await fetch('https://4332be03.conf-room-booking2.pages.dev/worker/api/rooms');
+                const res = await fetch('/worker/api/rooms');
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
@@ -183,7 +183,7 @@
             }
         }
         async function loadBookings(roomId) {
-            const res = await fetch(`https://4332be03.conf-room-booking2.pages.dev/api/bookings?room_id=${roomId}`);
+            const res = await fetch(`/api/bookings?room_id=${roomId}`);
             const bookings = await res.json();
             const bookingsDiv = document.getElementById('currentBookings');
             if (bookings.length === 0) {
@@ -203,7 +203,7 @@
                 start_time: document.getElementById('start').value,
                 end_time: document.getElementById('end').value
             };
-            const res = await fetch('https://4332be03.conf-room-booking2.pages.dev/api/bookings', {
+            const res = await fetch('/api/bookings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
