@@ -149,7 +149,7 @@
     <script>
         async function loadRooms() {
             try {
-                const res = await fetch('https://4332be03.conf-room-booking2.pages.dev/api/rooms');
+                const res = await fetch('https://4332be03.conf-room-booking2.pages.dev/worker/api/rooms');
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
