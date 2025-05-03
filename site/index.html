@@ -202,7 +202,7 @@
                 // Select first available room
                 const firstAvailable = availableRooms[0] ? availableRooms[0].id : rooms[0].id;
                 roomSelect.value = firstAvailable;
-                loadBookings(firstAvailable, rooms);
+                loadAllBookings();
             } catch (error) {
                 console.error('Error loading rooms:', error);
                 document.getElementById('room-list').innerHTML = 
@@ -210,27 +210,26 @@
             }
         }
 
-        async function loadBookings(roomId, roomsCache) {
-            const res = await fetch(`/worker/api/bookings?room_id=${roomId}`);
-            const bookings = await res.json();
+        async function loadAllBookings() {
+            const [roomsRes, bookingsRes] = await Promise.all([
+                fetch('/worker/api/rooms'),
+                fetch('/worker/api/bookings?room_id=all')
+            ]);
+            const rooms = await roomsRes.json();
+            const bookings = await bookingsRes.json();
             const bookingsDiv = document.getElementById('currentBookings');
             if (bookings.length === 0) {
-                bookingsDiv.innerHTML = '<em>No bookings for this room.</em>';
+                bookingsDiv.innerHTML = '<em>No bookings found.</em>';
             } else {
-                // Find room info
-                let roomInfo = '';
-                if (roomsCache) {
-                    const room = roomsCache.find(r => r.id == roomId);
-                    if (room) {
-                        roomInfo = `<strong>${room.name}</strong> (${room.location || 'No location'})<br>`;
-                    }
-                }
-                bookingsDiv.innerHTML = `<h3>Current Bookings</h3>${roomInfo}` + bookings.map(b => `<div>${b.user_name}: ${b.start_time} to ${b.end_time}</div>`).join('');
+                bookingsDiv.innerHTML = '<h3>All Bookings</h3>' + bookings.map(b => {
+                    const room = rooms.find(r => r.id == b.room_id);
+                    return `<div><strong>${room ? room.name : 'Unknown Room'}</strong> (${room ? room.location : ''})<br>${b.user_name}: ${b.start_time} to ${b.end_time}</div>`;
+                }).join('');
             }
         }
+
         document.getElementById('room').addEventListener('change', function() {
-            // Reload bookings for selected room
-            fetch('/worker/api/rooms').then(res => res.json()).then(rooms => loadBookings(this.value, rooms));
+            // No longer reload bookings by room
         });
         document.getElementById('bookingForm').onsubmit = async (e) => {
             e.preventDefault();
@@ -253,9 +252,11 @@
             } else {
                 document.getElementById('bookingResult').textContent = result.message || 'Booking submitted!';
                 loadRooms();
+                loadAllBookings();
             }
         };
         loadRooms();
+        loadAllBookings();
     </script>
 </body>
 </html> 
