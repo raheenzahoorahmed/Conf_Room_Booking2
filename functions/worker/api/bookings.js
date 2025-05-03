@@ -3,10 +3,14 @@ export async function onRequestGet(context) {
   const url = new URL(request.url);
   const { db } = env;
   const room_id = url.searchParams.get('room_id');
-  if (!room_id) {
-    return new Response(JSON.stringify({ error: 'room_id required' }), { status: 400 });
+  let results;
+  if (!room_id || room_id === 'all') {
+    // Return all bookings
+    results = (await db.prepare('SELECT * FROM bookings').all()).results;
+  } else {
+    // Return bookings for a specific room
+    results = (await db.prepare('SELECT * FROM bookings WHERE room_id = ? ORDER BY start_time').bind(room_id).all()).results;
   }
-  const { results } = await db.prepare('SELECT * FROM bookings WHERE room_id = ? ORDER BY start_time').bind(room_id).all();
   return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } });
 }
 
