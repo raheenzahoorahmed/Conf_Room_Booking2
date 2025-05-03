@@ -147,14 +147,27 @@
         </div>
     </div>
     <script>
+        async function fetchRoomsAndBookings() {
+            const [roomsRes, bookingsRes] = await Promise.all([
+                fetch('/worker/api/rooms'),
+                fetch('/worker/api/bookings?room_id=all')
+            ]);
+            const rooms = await roomsRes.json();
+            let bookings = [];
+            try {
+                bookings = await bookingsRes.json();
+            } catch {}
+            return { rooms, bookings };
+        }
+
+        function isRoomBooked(roomId, bookings) {
+            const now = new Date();
+            return bookings.some(b => b.room_id == roomId && new Date(b.start_time) <= now && new Date(b.end_time) >= now);
+        }
+
         async function loadRooms() {
             try {
-                const res = await fetch('/worker/api/rooms');
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-                const rooms = await res.json();
-                console.log('Fetched rooms:', rooms); // Debug log
+                const { rooms, bookings } = await fetchRoomsAndBookings();
                 const roomList = document.getElementById('room-list');
                 const roomSelect = document.getElementById('room');
                 roomList.innerHTML = '';
@@ -163,37 +176,61 @@
                     roomList.innerHTML = '<div class="room"><strong>No rooms available</strong></div>';
                     return;
                 }
+                // Only show available rooms as cards
+                const availableRooms = rooms.filter(room => !isRoomBooked(room.id, bookings));
+                if (availableRooms.length === 0) {
+                    roomList.innerHTML = '<div class="room"><strong>No rooms available right now</strong></div>';
+                } else {
+                    availableRooms.forEach(room => {
+                        const div = document.createElement('div');
+                        div.className = 'room';
+                        div.innerHTML = `<strong>${room.name}</strong> (${room.location || 'No location'})`;
+                        roomList.appendChild(div);
+                    });
+                }
+                // Populate selector, disabling booked rooms
                 rooms.forEach(room => {
-                    const div = document.createElement('div');
-                    div.className = 'room';
-                    div.innerHTML = `<strong>${room.name}</strong> (${room.location || 'No location'})`;
-                    roomList.appendChild(div);
                     const option = document.createElement('option');
                     option.value = room.id;
                     option.textContent = room.name;
+                    if (isRoomBooked(room.id, bookings)) {
+                        option.disabled = true;
+                        option.textContent += ' (Booked)';
+                    }
                     roomSelect.appendChild(option);
                 });
-                if (rooms.length > 0) {
-                    loadBookings(rooms[0].id);
-                }
+                // Select first available room
+                const firstAvailable = availableRooms[0] ? availableRooms[0].id : rooms[0].id;
+                roomSelect.value = firstAvailable;
+                loadBookings(firstAvailable, rooms);
             } catch (error) {
                 console.error('Error loading rooms:', error);
                 document.getElementById('room-list').innerHTML = 
                     '<div class="room"><strong>Error loading rooms</strong><br><small>Please try again later</small></div>';
             }
         }
-        async function loadBookings(roomId) {
+
+        async function loadBookings(roomId, roomsCache) {
             const res = await fetch(`/worker/api/bookings?room_id=${roomId}`);
             const bookings = await res.json();
             const bookingsDiv = document.getElementById('currentBookings');
             if (bookings.length === 0) {
                 bookingsDiv.innerHTML = '<em>No bookings for this room.</em>';
             } else {
-                bookingsDiv.innerHTML = '<h3>Current Bookings</h3>' + bookings.map(b => `<div>${b.user_name}: ${b.start_time} to ${b.end_time}</div>`).join('');
+                // Find room info
+                let roomInfo = '';
+                if (roomsCache) {
+                    const room = roomsCache.find(r => r.id == roomId);
+                    if (room) {
+                        roomInfo = `<strong>${room.name}</strong> (${room.location || 'No location'})<br>`;
+                    }
+                }
+                bookingsDiv.innerHTML = `<h3>Current Bookings</h3>${roomInfo}` + bookings.map(b => `<div>${b.user_name}: ${b.start_time} to ${b.end_time}</div>`).join('');
             }
         }
         document.getElementById('room').addEventListener('change', function() {
-            loadBookings(this.value);
+            // Reload bookings for selected room
+            fetch('/worker/api/rooms').then(res => res.json()).then(rooms => loadBookings(this.value, rooms));
         });
         document.getElementById('bookingForm').onsubmit = async (e) => {
             e.preventDefault();
@@ -215,7 +252,7 @@
                 document.getElementById('bookingResult').textContent = result.error || 'Error booking room.';
             } else {
                 document.getElementById('bookingResult').textContent = result.message || 'Booking submitted!';
-                loadBookings(data.room_id);
+                loadRooms();
             }
         };
         loadRooms();
