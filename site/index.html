@@ -183,7 +183,7 @@
             }
         }
         async function loadBookings(roomId) {
-            const res = await fetch(`/api/bookings?room_id=${roomId}`);
+            const res = await fetch(`/worker/api/bookings?room_id=${roomId}`);
             const bookings = await res.json();
             const bookingsDiv = document.getElementById('currentBookings');
             if (bookings.length === 0) {
@@ -203,7 +203,7 @@
                 start_time: document.getElementById('start').value,
                 end_time: document.getElementById('end').value
             };
-            const res = await fetch('/api/bookings', {
+            const res = await fetch('/worker/api/bookings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
